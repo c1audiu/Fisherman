@@ -1,4 +1,4 @@
-import pyautogui,numpy,cv2,pyaudio,audioop,threading,random,ctypes,time,win32gui,win32con
+import pyautogui,pyaudio,audioop,threading,random,time,multiprocessing
 from PIL import ImageGrab,ImageOps
 from dearpygui.core import *
 from dearpygui.simple import *
@@ -16,6 +16,9 @@ start_x = 1284
 start_y = 739
 bounding_box = (start_x - 60, start_y,start_x,start_y+1)   
 max_volume = 0
+
+#Thread Stopper
+stop_button = False
 
 #Generates the areas used for casting
 def generate_coords(sender,data):
@@ -41,38 +44,45 @@ def check_volume():
     stream = p.open(format=pyaudio.paInt16,channels=2,rate=44100,input=True,frames_per_buffer=1024)
     current_section = 0
     while 1:
-        total=0
-        for i in range(0,2):
-            data=stream.read(1024)
-            if True:
-                reading=audioop.max(data, 2)
-                total=total+reading
-                if total > max_volume and STATE != "SOLVING" and STATE != "DELAY" and STATE != "CASTING":
-                    do_minigame()
+        if stop_button == False:
+            total=0
+            for i in range(0,2):
+                data=stream.read(1024)
+                if True:
+                    reading=audioop.max(data, 2)
+                    total=total+reading
+                    if total > max_volume and STATE != "SOLVING" and STATE != "DELAY" and STATE != "CASTING":
+                        do_minigame()
+        else:
+            break
 
 #Cast the hook to random location selected
 def cast_hook_to_coords():
     global STATE
-    spot = random.choice(coords)
-    x,y = spot
-    pyautogui.moveTo(x,y,tween=pyautogui.linear)
-    time.sleep(0.2)
-    pyautogui.mouseDown()
-    time.sleep(random.randint(1,2))
-    pyautogui.mouseUp()
-    print(f"Casted to:{x,y}")
-    time.sleep(1.0)
-    STATE = "CAST"
+    if stop_button == False:
+        spot = random.choice(coords)
+        x,y = spot
+        pyautogui.moveTo(x,y,tween=pyautogui.linear)
+        time.sleep(0.2)
+        pyautogui.mouseDown()
+        time.sleep(random.randint(1,2))
+        pyautogui.mouseUp()
+        log_info(f"Casted to:{x,y}",logger="Information")
+        time.sleep(1.0)
+        STATE = "CAST"
 
 #Runs the casting function
 def cast_hook():
-    global STATE    
+    global STATE   
     while 1:
-        time.sleep(1)
-        if STATE == "CASTING":
-            cast_hook_to_coords()
+        if stop_button == False: 
+            time.sleep(1)
+            if STATE == "CASTING" or STATE == "STARTED":
+                cast_hook_to_coords()
+            else:
+                time.sleep(10)
         else:
-            time.sleep(10)
+            break
 
 #Uses the color of a area to determine when to hold or let go of a mouse. Is calibrated by modifying boundingbox on line 16 as well as the 80 on like 93          
 def do_minigame():
@@ -82,34 +92,53 @@ def do_minigame():
     pyautogui.mouseDown()
     pyautogui.mouseUp()
     while 1:
-        value = 0
-        image = ImageGrab.grab(bounding_box)
-        GrayImage = ImageOps.grayscale(image)
-        a = array(GrayImage.getcolors())
-        for x in a:
-            value = x[0] + x[1]
-        if value > 110:
-            #log_info(f'Mouse Down',logger="Information") Debugging Tool. Uncomment to see how the solver is working
-            pyautogui.mouseDown()
-        elif value < 80 or total == 0:
-            STATE = "CASTING"
-            break
+        if stop_button == False:
+            value = 0
+            image = ImageGrab.grab(bounding_box)
+            GrayImage = ImageOps.grayscale(image)
+            a = array(GrayImage.getcolors())
+            for x in a:
+                value = x[0] + x[1]
+            if value > 110:
+                #log_info(f'Mouse Down',logger="Information") Debugging Tool. Uncomment to see how the solver is working
+                pyautogui.mouseDown()
+            elif value < 80 or total == 0:
+                STATE = "CASTING"
+                break
+            else:
+                #log_info(f'Mouse Up',logger="Information") Debugging Tool. Uncomment to see how the solver is working
+                pyautogui.mouseUp()
         else:
-            #log_info(f'Mouse Up',logger="Information") Debugging Tool. Uncomment to see how the solver is working
-            pyautogui.mouseUp()
+            break
 
 #Starts the bots threads
 def start(data,sender):
-    global max_volume
-    max_volume = get_value("Set Volume Threshold")
-    if len(coords) == 0:
-        log_info(f'Please Select Fishing Coords first',logger="Information")
-        return
-    else:
-        threading.Thread(target = check_volume).start()
-        log_info(f'Volume Scanner Started',logger="Information")
-        threading.Thread(target = cast_hook).start()
-        log_info(f'Hook Manager Started',logger="Information")
+    global max_volume,stop_button,STATE
+    STATE = "STARTING"
+    stop_button = False
+    volume_manager = threading.Thread(target = check_volume)
+    hook_manager = threading.Thread(target = cast_hook)
+    if stop_button == False:
+        max_volume = get_value("Set Volume Threshold")
+        if len(coords) == 0:
+            log_info(f'Please Select Fishing Coords first',logger="Information")
+            return
+        else:
+            volume_manager.start()
+            log_info(f'Volume Scanner Started',logger="Information")
+            hook_manager.start()
+            log_info(f'Hook Manager Started',logger="Information")
+    STATE = "STARTED"
+
+def stop(data,sender):
+    global stop_button,STATE
+    STATE = "STOPPING"
+    stop_button == True
+    log_info(f'Stopping Hook Manager',logger="Information")
+    log_info(f'Stopping Volume Scanner',logger="Information")
+    pyautogui.mouseUp()
+    STATE = "STOPPED"
+
 #Updates Bot Volume
 def save_volume(sender,data):
     global max_volume
@@ -125,7 +154,7 @@ def Setup_title():
 #Settings
 set_main_window_size(700,500)
 set_style_window_menu_button_position(0)
-set_theme("Red")
+set_theme("Gold")
 set_global_font_scale(1)
 set_main_window_resizable(False)
 
@@ -136,7 +165,10 @@ with window("Fisherman Window",width = 687,height = 460):
     add_input_int("Set Volume Threshold",max_value=100000,min_value=0)
     add_button("Set Fishing Spots",width=130,callback=generate_coords)
     add_button("Set Maximum Volume",callback=save_volume)
+    add_spacing()
     add_button("Start Bot",callback=start)
+    add_same_line()
+    add_button("Stop Bot",callback = stop)
     add_logger("Information",log_level=0)
 
 threading.Thread(target = Setup_title).start()
