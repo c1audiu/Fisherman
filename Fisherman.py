@@ -1,11 +1,8 @@
-import pyautogui,numpy,cv2,pyaudio,audioop,threading,random,ctypes,time
+import pyautogui,numpy,cv2,pyaudio,audioop,threading,random,ctypes,time,win32gui,win32con
 from PIL import ImageGrab,ImageOps
-from numpy import *
-import random
-import win32gui
-import win32con
 from dearpygui.core import *
 from dearpygui.simple import *
+from numpy import *
 
 #Coords for fishing spots
 coords = []
@@ -14,11 +11,12 @@ total = 0
 #Current Bot State
 STATE = "IDLE"
 #Coords for important image locations
-start_x = 1284
+start_x = 1284 
 start_y = 739
 bounding_box = (start_x - 60, start_y,start_x,start_y+1)   
 max_volume = 0
 
+#Generates the areas used for casting
 def generate_coords(sender,data):
     global coords,STATE
     amount_of_choords = get_value("Amount Of Spots")
@@ -35,6 +33,7 @@ def generate_coords(sender,data):
         STATE = "CASTING"
     time.sleep(5)
 
+#Scans the current input volume
 def check_volume():
     global total,STATE,max_volume
     p = pyaudio.PyAudio()
@@ -50,6 +49,7 @@ def check_volume():
                 if total > max_volume and STATE != "SOLVING" and STATE != "DELAY" and STATE != "CASTING":
                     do_minigame()
 
+#Cast the hook to random location selected
 def cast_hook_to_coords():
     global STATE
     spot = random.choice(coords)
@@ -63,6 +63,7 @@ def cast_hook_to_coords():
     time.sleep(1.0)
     STATE = "CAST"
 
+#Runs the casting function
 def cast_hook():
     global STATE    
     while 1:
@@ -72,6 +73,7 @@ def cast_hook():
         else:
             time.sleep(10)
 
+#Uses the color of a area to determine when to hold or let go of a mouse. Is calibrated by modifying boundingbox on line 16 as well as the 80 on like 93          
 def do_minigame():
     global STATE
     STATE = "SOLVING"
@@ -95,6 +97,7 @@ def do_minigame():
             log_info(f'Mouse Up',logger="Information")
             pyautogui.mouseUp()
 
+#Starts the bots threads
 def start(data,sender):
     global max_volume
     max_volume = get_value("Set Volume Threshold")
@@ -106,12 +109,13 @@ def start(data,sender):
         log_info(f'Volume Scanner Started',logger="Information")
         threading.Thread(target = cast_hook).start()
         log_info(f'Hook Manager Started',logger="Information")
-
+#Updates Bot Volume
 def save_volume(sender,data):
     global max_volume
     max_volume = get_value("Set Volume Threshold")
     log_info(f'Max Volume Updated to :{max_volume}',logger="Information")
 
+#Title Tracking
 def Setup_title():
     while 1:
         set_main_window_title(f"Fisherman | Albion Online Bot | Status:{STATE} | Current Volume:{max_volume} \ {total} |")
@@ -124,6 +128,7 @@ set_theme("Red")
 set_global_font_scale(1)
 set_main_window_resizable(False)
 
+#Creates the DearPyGui Window
 with window("Fisherman Window",width = 687,height = 460):
     set_window_pos("Fisherman Window",0,0)
     add_input_int("Amount Of Spots",max_value=10,min_value=0)
@@ -132,8 +137,6 @@ with window("Fisherman Window",width = 687,height = 460):
     add_button("Set Maximum Volume",callback=save_volume)
     add_button("Start Bot",callback=start)
     add_logger("Information",log_level=0)
-
-
 
 threading.Thread(target = Setup_title).start()
 start_dearpygui()
