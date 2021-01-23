@@ -88,13 +88,13 @@ def do_minigame():
         for x in a:
             value = x[0] + x[1]
         if value > 110:
-            log_info(f'Mouse Down',logger="Information")
+            #log_info(f'Mouse Down',logger="Information") Debugging Tool. Uncomment to see how the solver is working
             pyautogui.mouseDown()
         elif value < 80 or total == 0:
             STATE = "CASTING"
             break
         else:
-            log_info(f'Mouse Up',logger="Information")
+            #log_info(f'Mouse Up',logger="Information") Debugging Tool. Uncomment to see how the solver is working
             pyautogui.mouseUp()
 
 #Starts the bots threads
