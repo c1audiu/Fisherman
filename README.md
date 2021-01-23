@@ -31,6 +31,7 @@ on line 60 there is start_x and start_y These values should be adjusted to the a
 
 ![alt text](https://i.imgur.com/TDgpeQ6.png)
 
+Also make sure to read through the script itself! There are comments explaining things in there 
 
 **Contributing**
 
