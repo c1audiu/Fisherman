@@ -4,7 +4,7 @@ An Albion online fishing bot
 
 Fisherman is a free open source fishing bot written in python.
 
-![alt text](https://i.imgur.com/0YHDLZS.png)
+![alt text](https://i.imgur.com/VN7IBtV.png)
 
 **Features:**
 
