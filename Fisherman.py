@@ -3,6 +3,7 @@ from PIL import ImageGrab,ImageOps
 from dearpygui.core import *
 from dearpygui.simple import *
 from numpy import *
+import random
 
 #Coords for fishing spots
 coords = []
