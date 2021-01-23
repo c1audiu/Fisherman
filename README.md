@@ -28,6 +28,7 @@ You may have to adjust the area where the bot scans for the minigame. This is si
 
 on line 60 there is start_x and start_y These values should be adjusted to the approximate point shown in the image.
 (You can find screen coordinates using programs,etc)
+
 ![alt text](https://i.imgur.com/TDgpeQ6.png)
 
 
