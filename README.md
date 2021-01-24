@@ -13,10 +13,12 @@ Fisherman is a free open source fishing bot written in python.
 3) Auto-Catch
 4) Multiple Fishing Spots
 5) Fully external
+6) Works on any screen size
 
 **How To Use:**
 
-Fisherman has only been tested on a 1440p Monitor Running the game at 1920x1080
+--Fisherman has only been tested on a 1440p Monitor Running the game at 1920x1080--
+Now works on any screen size
 
 If you aren't using a realtek driver you will have to install VB Audio Cable. Sound has to be ran through VB Audio Cable or Stereo Mix. They will have to be set as default devices.
 
