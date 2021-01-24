@@ -11,7 +11,6 @@ parser = configparser.ConfigParser()
 parser.read('settings.ini')
 
 debugmode = parser.getboolean('Settings','debug')
-
 #Coords for fishing spots
 coords = []
 #Sound Volume
@@ -42,12 +41,10 @@ def generate_coords(sender,data):
         temp.append(y)
         coords.append(temp)
         log_info(f'Position:{n} Saved. | {x,y}',logger="Information")
-        STATE = "CASTING"
-    time.sleep(5)
 
 #Scans the current input volume
 def check_volume():
-    global total,STATE,max_volume
+    global total,STATE,max_volume,stop_button
     p = pyaudio.PyAudio()
     stream = p.open(format=pyaudio.paInt16,channels=2,rate=44100,input=True,frames_per_buffer=1024)
     current_section = 0
@@ -159,7 +156,7 @@ def save_volume(sender,data):
 def Setup_title():
     while 1:
         set_main_window_title(f"Fisherman | Albion Online Bot | Status:{STATE} | Current Volume:{max_volume} \ {total} |")
-        time.sleep(1)
+        time.sleep(0.1)
 
 #Lets you pick Screen Coords
 def Setup_Tracking(sender,data):
