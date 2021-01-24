@@ -1,10 +1,10 @@
-import pyautogui,pyaudio,audioop,threading,random,time
-from PIL import ImageGrab,ImageOps
+import pyautogui,pyaudio,audioop,threading,time,os,win32api,configparser,mss
+from PIL import ImageGrab,ImageOps,Image
 from dearpygui.core import *
 from dearpygui.simple import *
-import configparser
 from numpy import *
 import random
+import mss.tools
 
 #Loads Settings
 parser = configparser.ConfigParser()
@@ -22,20 +22,31 @@ STATE = "IDLE"
 start_x = int(parser.get('Settings','start_x'))
 start_y = int(parser.get('Settings','start_y'))
 offset = int(parser.get('Settings','X_Offset'))
-bounding_box = (start_x - offset, start_y,start_x,start_y+1)   
+bounding_box = (start_x,start_y,start_x+1,start_y+1)   
 
 #Thread Stopper
 stop_button = False
 
+#Stuff for mouse events
+state_left = win32api.GetKeyState(0x01)
+state_right = win32api.GetKeyState(0x02)
+
 #Generates the areas used for casting
 def generate_coords(sender,data):
-    global coords,STATE
+    global coords,STATE,state_left
     amount_of_choords = get_value("Amount Of Spots")
     for n in range(int(amount_of_choords)):
         n = n+1
         temp = []
-        log_info(f'[spot:{n}]|Press Enter When Hovered over area you want in the console window',logger="Information")
-        input()
+        log_info(f'[spot:{n}]|Press Spacebar over the spot you want',logger="Information")
+        time.sleep(1)
+        while True:
+            a = win32api.GetKeyState(0x20)  
+            if a != state_left:
+                state_left = a 
+                if a < 0:
+                    break
+            time.sleep(0.001) 
         x,y = pyautogui.position()
         temp.append(x)
         temp.append(y)
@@ -65,12 +76,13 @@ def check_volume():
 def cast_hook_to_coords():
     global STATE
     if stop_button == False:
+        pyautogui.mouseUp()
         spot = random.choice(coords)
         x,y = spot
         pyautogui.moveTo(x,y,tween=pyautogui.linear)
         time.sleep(0.2)
         pyautogui.mouseDown()
-        time.sleep(random.randint(1,2))
+        time.sleep(random.uniform(2,3))
         pyautogui.mouseUp()
         log_info(f"Casted to:{x,y}",logger="Information")
         time.sleep(1.0)
@@ -84,6 +96,10 @@ def cast_hook():
             time.sleep(1)
             if STATE == "CASTING" or STATE == "STARTED":
                 cast_hook_to_coords()
+            elif STATE == "CAST":
+                time.sleep(10)
+                if STATE == "CAST":
+                    STATE = "CASTING"
             else:
                 time.sleep(10)
         else:
@@ -99,20 +115,22 @@ def do_minigame():
     while 1:
         if stop_button == False:
             value = 0
-            image = ImageGrab.grab(bounding_box)
-            GrayImage = ImageOps.grayscale(image)
+            image = mss.mss().grab(bounding_box)
+            img = Image.frombytes("RGB", image.size, image.bgra, "raw", "BGRX")
+            GrayImage = ImageOps.grayscale(img)
             a = array(GrayImage.getcolors())
-            for x in a:
-                value = x[0] + x[1]
-            if value > 110:
-                if debugmode:
+            value = a.sum()
+            print(value)
+            if value >= 145:
+                if debugmode is True:
                     log_info(f'Mouse Down',logger="Information")
                 pyautogui.mouseDown()
-            elif value < 80 or total == 0:
+                time.sleep(random.uniform(2,2.5))
+            elif value < 80 or total < 10:
                 STATE = "CASTING"
                 break
             else:
-                if debugmode:
+                if debugmode is True:
                     log_info(f'Mouse Up',logger="Information")
                 pyautogui.mouseUp()
         else:
@@ -162,7 +180,7 @@ def Setup_title():
 def Setup_Tracking(sender,data):
     global start_x,start_y
     log_info(f'Press Enter in console when hovered over area',logger="Information")
-    input()
+    os.system("pause")
     meme = pyautogui.position()
     start_x = meme[0]
     start_y = meme[1]
