@@ -1,4 +1,4 @@
-import pyautogui,pyaudio,audioop,threading,random,time,multiprocessing
+import pyautogui,pyaudio,audioop,threading,random,time
 from PIL import ImageGrab,ImageOps
 from dearpygui.core import *
 from dearpygui.simple import *
@@ -9,13 +9,14 @@ import random
 coords = []
 #Sound Volume
 total = 0
+max_volume = 0
 #Current Bot State
 STATE = "IDLE"
 #Coords for important image locations
 start_x = 1284 
 start_y = 739
-bounding_box = (start_x - 60, start_y,start_x,start_y+1)   
-max_volume = 0
+offset = 60
+bounding_box = (start_x - offset, start_y,start_x,start_y+1)   
 
 #Thread Stopper
 stop_button = False
@@ -27,7 +28,7 @@ def generate_coords(sender,data):
     for n in range(int(amount_of_choords)):
         n = n+1
         temp = []
-        log_info(f'[spot:{n}]|Press Enter When Hovered over area you want',logger="Information")
+        log_info(f'[spot:{n}]|Press Enter When Hovered over area you want in the console window',logger="Information")
         input()
         x,y = pyautogui.position()
         temp.append(x)
@@ -151,6 +152,21 @@ def Setup_title():
         set_main_window_title(f"Fisherman | Albion Online Bot | Status:{STATE} | Current Volume:{max_volume} \ {total} |")
         time.sleep(1)
 
+#Lets you pick Screen Coords
+def Setup_Tracking(sender,data):
+    global start_x,start_y
+    log_info(f'Press Enter in console when hovered over area',logger="Information")
+    input()
+    meme = pyautogui.position()
+    start_x = meme[0]
+    start_y = meme[1]
+    log_info(f'Updated Tracking Zone to :{start_x},{start_y}',logger="Information")
+
+def set_x_offset(sender,data):
+    global offset
+    offset = get_value("X Offset")
+    log_info(f'Updated X Offest to :{offset}',logger="Information")
+
 #Settings
 set_main_window_size(700,500)
 set_style_window_menu_button_position(0)
@@ -159,13 +175,17 @@ set_global_font_scale(1)
 set_main_window_resizable(False)
 
 #Creates the DearPyGui Window
-with window("Fisherman Window",width = 687,height = 460):
+with window("Fisherman Window",width = 684,height = 460):
     set_window_pos("Fisherman Window",0,0)
-    add_input_int("Amount Of Spots",max_value=10,min_value=0)
-    add_input_int("Set Volume Threshold",max_value=100000,min_value=0)
-    add_button("Set Fishing Spots",width=130,callback=generate_coords)
+    add_input_int("Amount Of Spots",max_value=10,min_value=0,tip = "Amount of Fishing Spots")
+    add_input_int("Set Volume Threshold",max_value=100000,min_value=0,tip = "Volume Threshold to trigger catch event")
+    add_input_int("X Offset",default_value=60,callback=set_x_offset,tip = "left / right offset for x coord. Creates a 1 pixel line left or right from x point")
+    add_button("Set Fishing Spots",width=130,callback=generate_coords,tip = "Starts function that lets you select fishing spots")
+    add_same_line()
     add_button("Set Maximum Volume",callback=save_volume)
-    add_spacing()
+    add_same_line()
+    add_button("Select Pixel",callback=Setup_Tracking,tip="Sets zone bot tracks for solving fishing minigame")
+    add_spacing(2)
     add_button("Start Bot",callback=start)
     add_same_line()
     add_button("Stop Bot",callback = stop)
