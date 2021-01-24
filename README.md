@@ -1,6 +1,10 @@
 # Fisherman
 An Albion online fishing bot
 
+Discord Server for support and help with this bot!
+
+https://discord.gg/J3YhZEUm5E
+
 
 Fisherman is a free open source fishing bot written in python.
 
@@ -39,7 +43,3 @@ Also make sure to read through the script itself! There are comments explaining 
 
 Contributions are always welcome!
 The program is free and will remain free. Please just send in a pull request.
-
-Discord Server for support and help with this bot!
-
-https://discord.gg/J3YhZEUm5E
