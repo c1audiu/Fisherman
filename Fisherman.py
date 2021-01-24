@@ -2,20 +2,27 @@ import pyautogui,pyaudio,audioop,threading,random,time
 from PIL import ImageGrab,ImageOps
 from dearpygui.core import *
 from dearpygui.simple import *
+import configparser
 from numpy import *
 import random
+
+#Loads Settings
+parser = configparser.ConfigParser()
+parser.read('settings.ini')
+
+debugmode = parser.get('Settings','debug')
 
 #Coords for fishing spots
 coords = []
 #Sound Volume
 total = 0
-max_volume = 0
+max_volume = parser.get('Settings','Volume_Threshold')
 #Current Bot State
 STATE = "IDLE"
 #Coords for important image locations
-start_x = 1284 
-start_y = 739
-offset = 60
+start_x = int(parser.get('Settings','start_x'))
+start_y = int(parser.get('Settings','start_y'))
+offset = int(parser.get('Settings','X_Offset'))
 bounding_box = (start_x - offset, start_y,start_x,start_y+1)   
 
 #Thread Stopper
@@ -101,13 +108,15 @@ def do_minigame():
             for x in a:
                 value = x[0] + x[1]
             if value > 110:
-                #log_info(f'Mouse Down',logger="Information") Debugging Tool. Uncomment to see how the solver is working
+                if debugmode:
+                    log_info(f'Mouse Down',logger="Information")
                 pyautogui.mouseDown()
             elif value < 80 or total == 0:
                 STATE = "CASTING"
                 break
             else:
-                #log_info(f'Mouse Up',logger="Information") Debugging Tool. Uncomment to see how the solver is working
+                if debugmode:
+                    log_info(f'Mouse Up',logger="Information")
                 pyautogui.mouseUp()
         else:
             break
@@ -167,6 +176,17 @@ def set_x_offset(sender,data):
     offset = get_value("X Offset")
     log_info(f'Updated X Offest to :{offset}',logger="Information")
 
+def save_settings(sender,data):
+    fp = open('settings.ini')
+    p = configparser.ConfigParser()
+    p.read_file(fp)
+    p.set('Settings', 'volume_threshold', str(max_volume))
+    p.set('Settings', 'x_offset', str(offset))
+    p.set('Settings', 'start_x', str(start_x))
+    p.set('Settings', 'start_y', str(start_y))
+    p.write(open(f'Settings.ini', 'w'))
+    log_info(f'Saved New Settings to settings.ini',logger="Information")
+
 #Settings
 set_main_window_size(700,500)
 set_style_window_menu_button_position(0)
@@ -178,18 +198,21 @@ set_main_window_resizable(False)
 with window("Fisherman Window",width = 684,height = 460):
     set_window_pos("Fisherman Window",0,0)
     add_input_int("Amount Of Spots",max_value=10,min_value=0,tip = "Amount of Fishing Spots")
-    add_input_int("Set Volume Threshold",max_value=100000,min_value=0,tip = "Volume Threshold to trigger catch event")
-    add_input_int("X Offset",default_value=60,callback=set_x_offset,tip = "left / right offset for x coord. Creates a 1 pixel line left or right from x point")
+    add_input_int("Set Volume Threshold",max_value=100000,min_value=0,default_value=int(max_volume),tip = "Volume Threshold to trigger catch event")
+    add_input_int("X Offset",default_value=offset,callback=set_x_offset,tip = "left / right offset for x coord. Creates a 1 pixel line left or right from x point")
     add_button("Set Fishing Spots",width=130,callback=generate_coords,tip = "Starts function that lets you select fishing spots")
     add_same_line()
     add_button("Set Maximum Volume",callback=save_volume)
     add_same_line()
     add_button("Select Pixel",callback=Setup_Tracking,tip="Sets zone bot tracks for solving fishing minigame")
-    add_spacing(2)
+    add_spacing(count = 2)
     add_button("Start Bot",callback=start)
     add_same_line()
     add_button("Stop Bot",callback = stop)
+    add_same_line()
+    add_button("Save Settings",callback=save_settings)
     add_logger("Information",log_level=0)
+    log_info(f'Loaded Settings. x:{start_x} , y:{start_y} , volume threshold:{max_volume} , x offset:{offset} , Debug Mode:{debugmode}',logger="Information")
 
 threading.Thread(target = Setup_title).start()
 start_dearpygui()
