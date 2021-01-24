@@ -10,7 +10,7 @@ import random
 parser = configparser.ConfigParser()
 parser.read('settings.ini')
 
-debugmode = parser.get('Settings','debug')
+debugmode = parser.getboolean('Settings','debug')
 
 #Coords for fishing spots
 coords = []
