@@ -143,7 +143,7 @@ def start(data,sender):
 def stop(data,sender):
     global stop_button,STATE
     STATE = "STOPPING"
-    stop_button == True
+    stop_button = True
     log_info(f'Stopping Hook Manager',logger="Information")
     log_info(f'Stopping Volume Scanner',logger="Information")
     pyautogui.mouseUp()
