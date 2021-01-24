@@ -14,3 +14,4 @@ PyScreeze==0.1.26
 PyTweening==1.0.3
 pywin32==300
 configparser
+mss
