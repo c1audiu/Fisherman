@@ -32,8 +32,7 @@ The Bot will attempt a catch when the audio threshold goes over. This is an adju
 
 You may have to adjust the area where the bot scans for the minigame. This is simple to do.
 
-on line 60 there is start_x and start_y These values should be adjusted to the approximate point shown in the image.
-(You can find screen coordinates using programs,etc)
+Use select pixel to select the approximate area show in this image
 
 ![alt text](https://i.imgur.com/TDgpeQ6.png)
 
