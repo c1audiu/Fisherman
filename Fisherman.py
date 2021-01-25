@@ -1,10 +1,9 @@
-import pyautogui,pyaudio,audioop,threading,time,os,win32api,configparser,mss
+import pyautogui,pyaudio,audioop,threading,time,win32api,configparser,mss,mss.tools
 from PIL import ImageOps,Image
 from dearpygui.core import *
 from dearpygui.simple import *
 from numpy import *
 import random
-import mss.tools
 
 #Loads Settings
 parser = configparser.ConfigParser()
@@ -13,6 +12,7 @@ debugmode = parser.getboolean('Settings','debug')
 max_volume = parser.get('Settings','Volume_Threshold')
 start_x = int(parser.get('Settings','start_x'))
 start_y = int(parser.get('Settings','start_y'))
+
 
 minimum_time = float(parser.get('Settings','minimum_pull'))
 maximum_time = float(parser.get('Settings','maximum_pull'))
@@ -27,7 +27,7 @@ total = 0
 STATE = "IDLE"
 
 #Coords for important image locations
-bounding_box = (start_x,start_y,start_x+1,start_y+1)   
+bounding_box = (start_x,start_y,start_x+1,start_y+1)
 
 #Thread Stopper
 stop_button = False
@@ -71,10 +71,10 @@ def cast_hook_to_coords():
         pyautogui.moveTo(x,y,tween=pyautogui.linear)
         time.sleep(0.2)
         pyautogui.mouseDown()
-        time.sleep(random.uniform(2,3))
+        time.sleep(random.uniform(0.2,0.5))
         pyautogui.mouseUp()
         log_info(f"Casted to:{x,y}",logger="Information")
-        time.sleep(2.0)
+        time.sleep(5.0)
         STATE = "CAST"
 
 #Runs the casting function
@@ -94,36 +94,42 @@ def cast_hook():
         else:
             break
 
+#Gets Color Value
+def GET_VALUE(bounding_box1):
+    image = mss.mss().grab(bounding_box1)
+    img = Image.frombytes("RGB", image.size, image.bgra, "raw", "BGRX")
+    GrayImage = ImageOps.grayscale(img)
+    a = array(GrayImage.getcolors())
+    value = a.sum()
+    print(value)
+    return value
+
 #Uses the color of a area to determine when to hold or let go of a mouse. Is calibrated by modifying boundingbox on line 16 as well as the 80 on like 93          
 def do_minigame():
     global STATE,minimum_time,maximum_time
-    STATE = "SOLVING"
-    log_info(f'Attempting Minigame',logger="Information")
-    pyautogui.mouseDown()
-    pyautogui.mouseUp()
-    while 1:
-        if stop_button == False:
-            value = 0
-            image = mss.mss().grab(bounding_box)
-            img = Image.frombytes("RGB", image.size, image.bgra, "raw", "BGRX")
-            GrayImage = ImageOps.grayscale(img)
-            a = array(GrayImage.getcolors())
-            value = a.sum()
-            print(value)
-            if value >= 145:
-                if debugmode is True:
-                    log_info(f'Mouse Down',logger="Information")
-                pyautogui.mouseDown()
-                time.sleep(random.uniform(minimum_time,maximum_time))
-            elif value < 80 or total < 10:
-                STATE = "CASTING"
-                break
+    time.sleep(0.5)
+    if STATE != "CASTING" and STATE != "STARTED":
+        STATE = "SOLVING"
+        log_info(f'Attempting Minigame',logger="Information")
+        pyautogui.mouseDown()
+        pyautogui.mouseUp()
+        while 1:
+            if stop_button == False:
+                value = GET_VALUE(bounding_box)
+                if value > 150:
+                    if debugmode is True:
+                        log_info(f'Mouse Down',logger="Information")
+                    pyautogui.mouseDown()
+                    time.sleep(random.uniform(2,2.5))
+                elif value < 80 or total < 10:
+                    STATE = "CASTING"
+                    break
+                else:
+                    if debugmode is True:
+                        log_info(f'Mouse Up',logger="Information")
+                    pyautogui.mouseUp()
             else:
-                if debugmode is True:
-                    log_info(f'Mouse Up',logger="Information")
-                pyautogui.mouseUp()
-        else:
-            break
+                break
 
 ##########################################################
 #
