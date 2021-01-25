@@ -76,7 +76,6 @@ def check_volume():
 def cast_hook_to_coords():
     global STATE
     if stop_button == False:
-        STATE = "CAST"
         pyautogui.mouseUp()
         spot = random.choice(coords)
         x,y = spot
@@ -86,7 +85,8 @@ def cast_hook_to_coords():
         time.sleep(random.uniform(2,3))
         pyautogui.mouseUp()
         log_info(f"Casted to:{x,y}",logger="Information")
-        time.sleep(1.0)
+        time.sleep(2.0)
+        STATE = "CAST"
 
 #Runs the casting function
 def cast_hook():
