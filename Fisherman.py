@@ -9,19 +9,24 @@ import mss.tools
 #Loads Settings
 parser = configparser.ConfigParser()
 parser.read('settings.ini')
-
 debugmode = parser.getboolean('Settings','debug')
-#Coords for fishing spots
-coords = []
-#Sound Volume
-total = 0
 max_volume = parser.get('Settings','Volume_Threshold')
-#Current Bot State
-STATE = "IDLE"
-#Coords for important image locations
 start_x = int(parser.get('Settings','start_x'))
 start_y = int(parser.get('Settings','start_y'))
-offset = int(parser.get('Settings','X_Offset'))
+
+minimum_time = float(parser.get('Settings','minimum_pull'))
+maximum_time = float(parser.get('Settings','maximum_pull'))
+
+#Coords for fishing spots
+coords = []
+
+#Sound Volume
+total = 0
+
+#Current Bot State
+STATE = "IDLE"
+
+#Coords for important image locations
 bounding_box = (start_x,start_y,start_x+1,start_y+1)   
 
 #Thread Stopper
@@ -31,27 +36,11 @@ stop_button = False
 state_left = win32api.GetKeyState(0x01)
 state_right = win32api.GetKeyState(0x02)
 
-#Generates the areas used for casting
-def generate_coords(sender,data):
-    global coords,STATE,state_left
-    amount_of_choords = get_value("Amount Of Spots")
-    for n in range(int(amount_of_choords)):
-        n = n+1
-        temp = []
-        log_info(f'[spot:{n}]|Press Spacebar over the spot you want',logger="Information")
-        time.sleep(1)
-        while True:
-            a = win32api.GetKeyState(0x20)  
-            if a != state_left:
-                state_left = a 
-                if a < 0:
-                    break
-            time.sleep(0.001) 
-        x,y = pyautogui.position()
-        temp.append(x)
-        temp.append(y)
-        coords.append(temp)
-        log_info(f'Position:{n} Saved. | {x,y}',logger="Information")
+##########################################################
+#
+#   These Functions handle bot state / minigame handling
+#
+##########################################################
 
 #Scans the current input volume
 def check_volume():
@@ -107,7 +96,7 @@ def cast_hook():
 
 #Uses the color of a area to determine when to hold or let go of a mouse. Is calibrated by modifying boundingbox on line 16 as well as the 80 on like 93          
 def do_minigame():
-    global STATE
+    global STATE,minimum_time,maximum_time
     STATE = "SOLVING"
     log_info(f'Attempting Minigame',logger="Information")
     pyautogui.mouseDown()
@@ -125,7 +114,7 @@ def do_minigame():
                 if debugmode is True:
                     log_info(f'Mouse Down',logger="Information")
                 pyautogui.mouseDown()
-                time.sleep(random.uniform(2,2.5))
+                time.sleep(random.uniform(minimum_time,maximum_time))
             elif value < 80 or total < 10:
                 STATE = "CASTING"
                 break
@@ -135,6 +124,34 @@ def do_minigame():
                 pyautogui.mouseUp()
         else:
             break
+
+##########################################################
+#
+#   These Functions are all Callbacks used by DearPyGui
+#
+##########################################################
+
+#Generates the areas used for casting
+def generate_coords(sender,data):
+    global coords,STATE,state_left
+    amount_of_choords = get_value("Amount Of Spots")
+    for n in range(int(amount_of_choords)):
+        n = n+1
+        temp = []
+        log_info(f'[spot:{n}]|Press Spacebar over the spot you want',logger="Information")
+        time.sleep(1)
+        while True:
+            a = win32api.GetKeyState(0x20)  
+            if a != state_left:
+                state_left = a 
+                if a < 0:
+                    break
+            time.sleep(0.001) 
+        x,y = pyautogui.position()
+        temp.append(x)
+        temp.append(y)
+        coords.append(temp)
+        log_info(f'Position:{n} Saved. | {x,y}',logger="Information")
 
 #Starts the bots threads
 def start(data,sender):
@@ -153,6 +170,7 @@ def start(data,sender):
             log_info(f'Volume Scanner Started',logger="Information")
             hook_manager.start()
             log_info(f'Hook Manager Started',logger="Information")
+            log_info(f'Bot Started',logger="Information")
     STATE = "STARTED"
 
 #Stops the bot and closes active threads
@@ -194,6 +212,18 @@ def Setup_Tracking(sender,data):
     start_y = meme[1]
     log_info(f'Updated Tracking Zone to :{start_x},{start_y}',logger="Information")
 
+def save_minimum_pull(sender,data):
+    global minimum_time
+    minimum_time = get_value("Minimum Pull Time")
+    minimum_time = round(minimum_time,2)
+    log_info(f'Updated Minimum Pull Time to :{minimum_time}',logger="Information")
+
+def save_maximum_pull(sender,data):
+    global maximum_time
+    maximum_time = get_value("Maximum Pull Time")
+    maximum_time = round(maximum_time,2)
+    log_info(f'Updated Maximum Pull Time to :{maximum_time}',logger="Information")
+
 #Saves settings to settings.ini
 def save_settings(sender,data):
     fp = open('settings.ini')
@@ -202,6 +232,8 @@ def save_settings(sender,data):
     p.set('Settings', 'volume_threshold', str(max_volume))
     p.set('Settings', 'start_x', str(start_x))
     p.set('Settings', 'start_y', str(start_y))
+    p.set('Settings', 'minimum_pull', str(minimum_time))
+    p.set('Settings', 'maximum_pull', str(maximum_time))
     p.write(open(f'Settings.ini', 'w'))
     log_info(f'Saved New Settings to settings.ini',logger="Information")
 
@@ -217,19 +249,21 @@ with window("Fisherman Window",width = 684,height = 460):
     set_window_pos("Fisherman Window",0,0)
     add_input_int("Amount Of Spots",max_value=10,min_value=0,tip = "Amount of Fishing Spots")
     add_input_int("Set Volume Threshold",max_value=100000,min_value=0,default_value=int(max_volume),callback = save_volume ,tip = "Volume Threshold to trigger catch event")
+    add_input_float("Maximum Pull Time",min_value=0,max_value=3,default_value=maximum_time,callback=save_maximum_pull,tip = "Max pulling time in fish minigame")
+    add_input_float("Minimum Pull Time",min_value=0,max_value=3,default_value=minimum_time,callback=save_minimum_pull,tip = "Min pulling time in fish minigame")
     add_spacing(count = 3)
     add_button("Set Fishing Spots",width=130,callback=generate_coords,tip = "Starts function that lets you select fishing spots")
     add_same_line()
     add_button("Select Pixel",callback=Setup_Tracking,tip="Sets zone bot tracks for solving fishing minigame")
     add_spacing(count = 5)
-    add_button("Start Bot",callback=start)
+    add_button("Start Bot",callback=start,tip = "Starts the bot")
     add_same_line()
-    add_button("Stop Bot",callback = stop)
+    add_button("Stop Bot",callback = stop,tip = "Stops the bot")
     add_same_line()
-    add_button("Save Settings",callback=save_settings)
+    add_button("Save Settings",callback=save_settings,tip = "Saves bot settings to settings.ini")
     add_spacing(count = 5)
     add_logger("Information",log_level=0)
-    log_info(f'Loaded Settings. x:{start_x} , y:{start_y} , volume threshold:{max_volume} , x offset:{offset} , Debug Mode:{debugmode}',logger="Information")
+    log_info(f'Loaded Settings. x:{start_x} , y:{start_y} , volume threshold:{max_volume} , Debug Mode:{debugmode}',logger="Information")
 
 threading.Thread(target = Setup_title).start()
 start_dearpygui()
