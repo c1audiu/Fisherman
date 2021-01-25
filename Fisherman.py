@@ -120,7 +120,7 @@ def do_minigame():
                     if debugmode is True:
                         log_info(f'Mouse Down',logger="Information")
                     pyautogui.mouseDown()
-                    time.sleep(random.uniform(2,2.5))
+                    time.sleep(random.uniform(minimum_time,maximum_time))
                 elif value < 80 or total < 10:
                     STATE = "CASTING"
                     break
