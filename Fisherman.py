@@ -1,5 +1,5 @@
 import pyautogui,pyaudio,audioop,threading,time,os,win32api,configparser,mss
-from PIL import ImageGrab,ImageOps,Image
+from PIL import ImageOps,Image
 from dearpygui.core import *
 from dearpygui.simple import *
 from numpy import *
@@ -76,6 +76,7 @@ def check_volume():
 def cast_hook_to_coords():
     global STATE
     if stop_button == False:
+        STATE = "CAST"
         pyautogui.mouseUp()
         spot = random.choice(coords)
         x,y = spot
@@ -86,7 +87,6 @@ def cast_hook_to_coords():
         pyautogui.mouseUp()
         log_info(f"Casted to:{x,y}",logger="Information")
         time.sleep(1.0)
-        STATE = "CAST"
 
 #Runs the casting function
 def cast_hook():
@@ -155,6 +155,7 @@ def start(data,sender):
             log_info(f'Hook Manager Started',logger="Information")
     STATE = "STARTED"
 
+#Stops the bot and closes active threads
 def stop(data,sender):
     global stop_button,STATE
     STATE = "STOPPING"
@@ -163,6 +164,7 @@ def stop(data,sender):
     log_info(f'Stopping Volume Scanner',logger="Information")
     pyautogui.mouseUp()
     STATE = "STOPPED"
+    log_info(f'Stopped Bot',logger="Information")
 
 #Updates Bot Volume
 def save_volume(sender,data):
@@ -178,31 +180,32 @@ def Setup_title():
 
 #Lets you pick Screen Coords
 def Setup_Tracking(sender,data):
-    global start_x,start_y
-    log_info(f'Press Enter in console when hovered over area',logger="Information")
-    os.system("pause")
+    global start_x,start_y,state_right
+    log_info(f'Right click over the area you want to track',logger="Information")
+    while True:
+        b = win32api.GetKeyState(0x02)
+        if b != state_right:
+            state_right = b
+            if b < 0:
+                break
+            time.sleep(0.001)
     meme = pyautogui.position()
     start_x = meme[0]
     start_y = meme[1]
     log_info(f'Updated Tracking Zone to :{start_x},{start_y}',logger="Information")
 
-def set_x_offset(sender,data):
-    global offset
-    offset = get_value("X Offset")
-    log_info(f'Updated X Offest to :{offset}',logger="Information")
-
+#Saves settings to settings.ini
 def save_settings(sender,data):
     fp = open('settings.ini')
     p = configparser.ConfigParser()
     p.read_file(fp)
     p.set('Settings', 'volume_threshold', str(max_volume))
-    p.set('Settings', 'x_offset', str(offset))
     p.set('Settings', 'start_x', str(start_x))
     p.set('Settings', 'start_y', str(start_y))
     p.write(open(f'Settings.ini', 'w'))
     log_info(f'Saved New Settings to settings.ini',logger="Information")
 
-#Settings
+#Settings for DearPyGui window
 set_main_window_size(700,500)
 set_style_window_menu_button_position(0)
 set_theme("Gold")
@@ -213,19 +216,18 @@ set_main_window_resizable(False)
 with window("Fisherman Window",width = 684,height = 460):
     set_window_pos("Fisherman Window",0,0)
     add_input_int("Amount Of Spots",max_value=10,min_value=0,tip = "Amount of Fishing Spots")
-    add_input_int("Set Volume Threshold",max_value=100000,min_value=0,default_value=int(max_volume),tip = "Volume Threshold to trigger catch event")
-    add_input_int("X Offset",default_value=offset,callback=set_x_offset,tip = "left / right offset for x coord. Creates a 1 pixel line left or right from x point")
+    add_input_int("Set Volume Threshold",max_value=100000,min_value=0,default_value=int(max_volume),callback = save_volume ,tip = "Volume Threshold to trigger catch event")
+    add_spacing(count = 3)
     add_button("Set Fishing Spots",width=130,callback=generate_coords,tip = "Starts function that lets you select fishing spots")
     add_same_line()
-    add_button("Set Maximum Volume",callback=save_volume)
-    add_same_line()
     add_button("Select Pixel",callback=Setup_Tracking,tip="Sets zone bot tracks for solving fishing minigame")
-    add_spacing(count = 2)
+    add_spacing(count = 5)
     add_button("Start Bot",callback=start)
     add_same_line()
     add_button("Stop Bot",callback = stop)
     add_same_line()
     add_button("Save Settings",callback=save_settings)
+    add_spacing(count = 5)
     add_logger("Information",log_level=0)
     log_info(f'Loaded Settings. x:{start_x} , y:{start_y} , volume threshold:{max_volume} , x offset:{offset} , Debug Mode:{debugmode}',logger="Information")
 
