@@ -12,7 +12,8 @@ debugmode = parser.getboolean('Settings','debug')
 max_volume = parser.get('Settings','Volume_Threshold')
 start_x = int(parser.get('Settings','start_x'))
 start_y = int(parser.get('Settings','start_y'))
-
+x_length = int(parser.get('Settings','x_length'))
+color_threshold = int(parser.get('Settings','color_threshold'))
 
 minimum_time = float(parser.get('Settings','minimum_pull'))
 maximum_time = float(parser.get('Settings','maximum_pull'))
@@ -27,7 +28,7 @@ total = 0
 STATE = "IDLE"
 
 #Coords for important image locations
-bounding_box = (start_x,start_y,start_x+1,start_y+1)
+bounding_box = (start_x,start_y,start_x+x_length,start_y+1)
 
 #Thread Stopper
 stop_button = False
@@ -86,9 +87,11 @@ def cast_hook():
             if STATE == "CASTING" or STATE == "STARTED":
                 cast_hook_to_coords()
             elif STATE == "CAST":
-                time.sleep(10)
+                time.sleep(20)
                 if STATE == "CAST":
                     STATE = "CASTING"
+                    pyautogui.mouseUp()
+                    time.sleep(3)
             else:
                 time.sleep(10)
         else:
@@ -101,7 +104,7 @@ def GET_VALUE(bounding_box1):
     GrayImage = ImageOps.grayscale(img)
     a = array(GrayImage.getcolors())
     value = a.sum()
-    print(value)
+    print(f'Current Color Value:{value}')
     return value
 
 #Uses the color of a area to determine when to hold or let go of a mouse. Is calibrated by modifying boundingbox on line 16 as well as the 80 on like 93          
@@ -116,7 +119,7 @@ def do_minigame():
         while 1:
             if stop_button == False:
                 value = GET_VALUE(bounding_box)
-                if value > 150:
+                if value > color_threshold:
                     if debugmode is True:
                         log_info(f'Mouse Down',logger="Information")
                     pyautogui.mouseDown()
@@ -230,6 +233,16 @@ def save_maximum_pull(sender,data):
     maximum_time = round(maximum_time,2)
     log_info(f'Updated Maximum Pull Time to :{maximum_time}',logger="Information")
 
+def save_x_lenth(sender,data):
+    global x_length
+    x_length = get_value("Pixel Scanner Length")
+    log_info(f'Updated x_length to :{x_length}',logger="Information")
+
+def save_color_threshold(sender,data):
+    global color_threshold
+    color_threshold = get_value("Color Threshold")
+    log_info(f'Updated color_threshold to :{color_threshold}',logger="Information")
+
 #Saves settings to settings.ini
 def save_settings(sender,data):
     fp = open('settings.ini')
@@ -240,6 +253,8 @@ def save_settings(sender,data):
     p.set('Settings', 'start_y', str(start_y))
     p.set('Settings', 'minimum_pull', str(minimum_time))
     p.set('Settings', 'maximum_pull', str(maximum_time))
+    p.set('Settings', 'x_length',str(x_length))
+    p.set('Settings','color_threshold',str(color_threshold))
     p.write(open(f'Settings.ini', 'w'))
     log_info(f'Saved New Settings to settings.ini',logger="Information")
 
@@ -255,6 +270,8 @@ with window("Fisherman Window",width = 684,height = 460):
     set_window_pos("Fisherman Window",0,0)
     add_input_int("Amount Of Spots",max_value=10,min_value=0,tip = "Amount of Fishing Spots")
     add_input_int("Set Volume Threshold",max_value=100000,min_value=0,default_value=int(max_volume),callback = save_volume ,tip = "Volume Threshold to trigger catch event")
+    add_input_int("Pixel Scanner Length",max_value=10,min_value=1,default_value=x_length,callback=save_x_lenth,tip = "Sets the length of the scanning area (helpful for people on 60hz monitors) (default = 1)")
+    add_input_int("Color Threshold",min_value=150,default_value=color_threshold,callback=save_color_threshold,tip="Sum of colors from selection before bot holds left mouse to catch fish. (Only change if you changed Pixel Scanner Length) (default = 150)")
     add_input_float("Maximum Pull Time",min_value=0,max_value=3,default_value=maximum_time,callback=save_maximum_pull,tip = "Max pulling time in fish minigame")
     add_input_float("Minimum Pull Time",min_value=0,max_value=3,default_value=minimum_time,callback=save_minimum_pull,tip = "Min pulling time in fish minigame")
     add_spacing(count = 3)
