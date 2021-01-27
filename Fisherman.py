@@ -1,8 +1,6 @@
-import pyautogui,pyaudio,audioop,threading,time,win32api,configparser,mss,mss.tools
-from PIL import ImageOps,Image
+import pyautogui,pyaudio,audioop,threading,time,win32api,configparser,mss,mss.tools,cv2,numpy
 from dearpygui.core import *
 from dearpygui.simple import *
-from numpy import *
 import random
 
 #Loads Settings
@@ -10,14 +8,14 @@ parser = configparser.ConfigParser()
 parser.read('settings.ini')
 debugmode = parser.getboolean('Settings','debug')
 max_volume = parser.get('Settings','Volume_Threshold')
-start_x = int(parser.get('Settings','start_x'))
-start_y = int(parser.get('Settings','start_y'))
-x_length = int(parser.get('Settings','x_length'))
-color_threshold = int(parser.get('Settings','color_threshold'))
+screen_area = parser.get('Settings','tracking_zone')
 
-minimum_time = float(parser.get('Settings','minimum_pull'))
-maximum_time = float(parser.get('Settings','maximum_pull'))
+screen_area = screen_area.strip('(')
+screen_area = screen_area.strip(')')
+cordies = screen_area.split(',')
+screen_area = int(cordies[0]),int(cordies[1]),int(cordies[2]),int(cordies[3])
 
+#screen_area = x1,y1,x2,y2
 #Coords for fishing spots
 coords = []
 
@@ -26,9 +24,6 @@ total = 0
 
 #Current Bot State
 STATE = "IDLE"
-
-#Coords for important image locations
-bounding_box = (start_x,start_y,start_x+x_length,start_y+1)
 
 #Thread Stopper
 stop_button = False
@@ -65,51 +60,41 @@ def check_volume():
 #Cast the hook to random location selected
 def cast_hook_to_coords():
     global STATE
+    time.sleep(2)
     if stop_button == False:
         pyautogui.mouseUp()
         spot = random.choice(coords)
         x,y = spot
-        pyautogui.moveTo(x,y,tween=pyautogui.linear)
+        pyautogui.moveTo(x,y)
         time.sleep(0.2)
         pyautogui.mouseDown()
         time.sleep(random.uniform(0.2,0.5))
         pyautogui.mouseUp()
-        log_info(f"Casted to:{x,y}",logger="Information")
-        time.sleep(5.0)
+        log_info(f"Casted towards:{x,y}",logger="Information")
         STATE = "CAST"
+        time.sleep(3)
 
 #Runs the casting function
 def cast_hook():
-    global STATE   
+    global STATE
     while 1:
-        if stop_button == False: 
+        if stop_button == False:
             time.sleep(1)
             if STATE == "CASTING" or STATE == "STARTED":
                 cast_hook_to_coords()
             elif STATE == "CAST":
                 time.sleep(20)
                 if STATE == "CAST":
-                    STATE = "CASTING"
+                    log_info(f"Seems to be stuck on cast. Recasting",logger="Information")
+                    pyautogui.mouseDown()
                     pyautogui.mouseUp()
-                    time.sleep(3)
-            else:
-                time.sleep(10)
+                    cast_hook_to_coords()
         else:
             break
 
-#Gets Color Value
-def GET_VALUE(bounding_box1):
-    image = mss.mss().grab(bounding_box1)
-    img = Image.frombytes("RGB", image.size, image.bgra, "raw", "BGRX")
-    GrayImage = ImageOps.grayscale(img)
-    a = array(GrayImage.getcolors())
-    value = a.sum()
-    print(f'Current Color Value:{value}')
-    return value
-
 #Uses the color of a area to determine when to hold or let go of a mouse. Is calibrated by modifying boundingbox on line 16 as well as the 80 on like 93          
 def do_minigame():
-    global STATE,minimum_time,maximum_time
+    global STATE
     time.sleep(0.5)
     if STATE != "CASTING" and STATE != "STARTED":
         STATE = "SOLVING"
@@ -117,22 +102,17 @@ def do_minigame():
         pyautogui.mouseDown()
         pyautogui.mouseUp()
         while 1:
-            if stop_button == False:
-                value = GET_VALUE(bounding_box)
-                if value > color_threshold:
-                    if debugmode is True:
-                        log_info(f'Mouse Down',logger="Information")
+            valid,location,size = Detect_Bobber()
+            if valid == "TRUE":
+                if location[0] < size / 2:
                     pyautogui.mouseDown()
-                    time.sleep(random.uniform(minimum_time,maximum_time))
-                elif value < 80 or total < 10:
-                    STATE = "CASTING"
-                    break
                 else:
-                    if debugmode is True:
-                        log_info(f'Mouse Up',logger="Information")
                     pyautogui.mouseUp()
             else:
-                break
+                if STATE != "CASTING":
+                    STATE = "CASTING"
+                    pyautogui.mouseUp()
+                    break
 
 ##########################################################
 #
@@ -161,6 +141,46 @@ def generate_coords(sender,data):
         temp.append(y)
         coords.append(temp)
         log_info(f'Position:{n} Saved. | {x,y}',logger="Information")
+
+#Sets tracking zone for image detection
+def Grab_Screen(sender,data):
+    global screen_area
+    state_left = win32api.GetKeyState(0x20)
+    image_coords = []
+    log_info(f'Please hold and drag space over tracking zone (top left to bottom right)',logger="Information")
+    while True:
+        a = win32api.GetKeyState(0x20)
+        if a != state_left:  # Button state changed
+            state_left = a
+            if a < 0:
+                x,y = pyautogui.position()
+                image_coords.append([x,y])
+            else:
+                x,y = pyautogui.position()
+                image_coords.append([x,y])
+                break
+        time.sleep(0.001)
+    start_point = image_coords[0]
+    end_point = image_coords[1]
+    screen_area = start_point[0],start_point[1],end_point[0],end_point[1]
+    log_info(f'Updated tracking area to {screen_area}',logger="Information")
+
+#Detects bobber in tracking zone using openCV
+def Detect_Bobber():
+    with mss.mss() as sct:
+        base = numpy.array(sct.grab(screen_area))
+        base = numpy.flip(base[:, :, :3], 2)  # 1
+        base = cv2.cvtColor(base, cv2.COLOR_RGB2BGR)
+        bobber = cv2.imread('bobber.png')
+        bobber = numpy.array(bobber, dtype=numpy.uint8)
+        bobber = numpy.flip(bobber[:, :, :3], 2)  # 1
+        bobber = cv2.cvtColor(bobber, cv2.COLOR_RGB2BGR)
+        result = cv2.matchTemplate(base,bobber,cv2.TM_CCOEFF_NORMED)
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+        if max_val > 0.7:
+            return ["TRUE",max_loc,base.shape[1]]
+        else:
+            return ["FALSE",max_loc,base.shape[1]]
 
 #Starts the bots threads
 def start(data,sender):
@@ -205,56 +225,13 @@ def Setup_title():
         set_main_window_title(f"Fisherman | Albion Online Bot | Status:{STATE} | Current Volume:{max_volume} \ {total} |")
         time.sleep(0.1)
 
-#Lets you pick Screen Coords
-def Setup_Tracking(sender,data):
-    global start_x,start_y,state_right
-    log_info(f'Right click over the area you want to track',logger="Information")
-    while True:
-        b = win32api.GetKeyState(0x02)
-        if b != state_right:
-            state_right = b
-            if b < 0:
-                break
-            time.sleep(0.001)
-    meme = pyautogui.position()
-    start_x = meme[0]
-    start_y = meme[1]
-    log_info(f'Updated Tracking Zone to :{start_x},{start_y}',logger="Information")
-
-def save_minimum_pull(sender,data):
-    global minimum_time
-    minimum_time = get_value("Minimum Pull Time")
-    minimum_time = round(minimum_time,2)
-    log_info(f'Updated Minimum Pull Time to :{minimum_time}',logger="Information")
-
-def save_maximum_pull(sender,data):
-    global maximum_time
-    maximum_time = get_value("Maximum Pull Time")
-    maximum_time = round(maximum_time,2)
-    log_info(f'Updated Maximum Pull Time to :{maximum_time}',logger="Information")
-
-def save_x_lenth(sender,data):
-    global x_length
-    x_length = get_value("Pixel Scanner Length")
-    log_info(f'Updated x_length to :{x_length}',logger="Information")
-
-def save_color_threshold(sender,data):
-    global color_threshold
-    color_threshold = get_value("Color Threshold")
-    log_info(f'Updated color_threshold to :{color_threshold}',logger="Information")
-
 #Saves settings to settings.ini
 def save_settings(sender,data):
     fp = open('settings.ini')
     p = configparser.ConfigParser()
     p.read_file(fp)
     p.set('Settings', 'volume_threshold', str(max_volume))
-    p.set('Settings', 'start_x', str(start_x))
-    p.set('Settings', 'start_y', str(start_y))
-    p.set('Settings', 'minimum_pull', str(minimum_time))
-    p.set('Settings', 'maximum_pull', str(maximum_time))
-    p.set('Settings', 'x_length',str(x_length))
-    p.set('Settings','color_threshold',str(color_threshold))
+    p.set('Settings','tracking_zone',str(screen_area))
     p.write(open(f'Settings.ini', 'w'))
     log_info(f'Saved New Settings to settings.ini',logger="Information")
 
@@ -270,14 +247,10 @@ with window("Fisherman Window",width = 684,height = 460):
     set_window_pos("Fisherman Window",0,0)
     add_input_int("Amount Of Spots",max_value=10,min_value=0,tip = "Amount of Fishing Spots")
     add_input_int("Set Volume Threshold",max_value=100000,min_value=0,default_value=int(max_volume),callback = save_volume ,tip = "Volume Threshold to trigger catch event")
-    add_input_int("Pixel Scanner Length",max_value=10,min_value=1,default_value=x_length,callback=save_x_lenth,tip = "Sets the length of the scanning area (helpful for people on 60hz monitors) (default = 1)")
-    add_input_int("Color Threshold",min_value=150,default_value=color_threshold,callback=save_color_threshold,tip="Sum of colors from selection before bot holds left mouse to catch fish. (Only change if you changed Pixel Scanner Length) (default = 150)")
-    add_input_float("Maximum Pull Time",min_value=0,max_value=3,default_value=maximum_time,callback=save_maximum_pull,tip = "Max pulling time in fish minigame")
-    add_input_float("Minimum Pull Time",min_value=0,max_value=3,default_value=minimum_time,callback=save_minimum_pull,tip = "Min pulling time in fish minigame")
     add_spacing(count = 3)
     add_button("Set Fishing Spots",width=130,callback=generate_coords,tip = "Starts function that lets you select fishing spots")
     add_same_line()
-    add_button("Select Pixel",callback=Setup_Tracking,tip="Sets zone bot tracks for solving fishing minigame")
+    add_button("Set Tracking Zone",callback=Grab_Screen,tip="Sets zone bot tracks for solving fishing minigame")
     add_spacing(count = 5)
     add_button("Start Bot",callback=start,tip = "Starts the bot")
     add_same_line()
@@ -286,7 +259,7 @@ with window("Fisherman Window",width = 684,height = 460):
     add_button("Save Settings",callback=save_settings,tip = "Saves bot settings to settings.ini")
     add_spacing(count = 5)
     add_logger("Information",log_level=0)
-    log_info(f'Loaded Settings. x:{start_x} , y:{start_y} , volume threshold:{max_volume} , Debug Mode:{debugmode}',logger="Information")
+    log_info(f'Loaded Settings. Volume Threshold:{max_volume},Tracking Zone:{screen_area},Debug Mode:{debugmode}',logger="Information")
 
 threading.Thread(target = Setup_title).start()
 start_dearpygui()
