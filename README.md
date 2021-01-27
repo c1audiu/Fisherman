@@ -19,6 +19,7 @@ Fisherman is a free open source fishing bot written in python.
 5) Fully external
 6) Works on any screen size
 7) Extremely optimal fish catching
+8) Uses MSS and OpenCV for effiecent object detection
 
 **How To Use:**
 
