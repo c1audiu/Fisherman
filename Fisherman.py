@@ -87,7 +87,7 @@ def cast_hook():
         else:
             break
 
-#Uses the color of a area to determine when to hold or let go of a mouse. Is calibrated by modifying boundingbox on line 16 as well as the 80 on like 93          
+#Uses obj detection with OpenCV to find and track bobbers left / right coords
 def do_minigame():
     global STATE
     if STATE != "CASTING" and STATE != "STARTED":
@@ -95,18 +95,24 @@ def do_minigame():
         log_info(f'Attempting Minigame',logger="Information")
         pyautogui.mouseDown()
         pyautogui.mouseUp()
-        while 1:
-            valid,location,size = Detect_Bobber()
-            if valid == "TRUE":
-                if location[0] < size / 2:
-                    pyautogui.mouseDown()
+        #Initial scan. Waits for bobber to appear
+        time.sleep(0.5)
+        valid,location,size = Detect_Bobber()
+        if valid == "TRUE":
+            while 1:
+                valid,location,size = Detect_Bobber()
+                if valid == "TRUE":
+                    if location[0] < size / 2:
+                        pyautogui.mouseDown()
+                    else:
+                        pyautogui.mouseUp()
                 else:
-                    pyautogui.mouseUp()
-            else:
-                if STATE != "CASTING":
-                    STATE = "CASTING"
-                    pyautogui.mouseUp()
-                    break
+                    if STATE != "CASTING":
+                        STATE = "CASTING"
+                        pyautogui.mouseUp()
+                        break
+        else:
+            STATE = "CASTING"
 
 ##########################################################
 #
