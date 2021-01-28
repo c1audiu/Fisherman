@@ -57,45 +57,39 @@ def check_volume():
         else:
             break
 
-#Cast the hook to random location selected
-def cast_hook_to_coords():
-    global STATE
-    time.sleep(2)
-    if stop_button == False:
-        pyautogui.mouseUp()
-        spot = random.choice(coords)
-        x,y = spot
-        pyautogui.moveTo(x,y)
-        time.sleep(0.2)
-        pyautogui.mouseDown()
-        time.sleep(random.uniform(0.2,0.5))
-        pyautogui.mouseUp()
-        log_info(f"Casted towards:{x,y}",logger="Information")
-        STATE = "CAST"
-        time.sleep(3)
+def get_new_spot():
+    return random.choice(coords)
 
 #Runs the casting function
 def cast_hook():
     global STATE
     while 1:
         if stop_button == False:
-            time.sleep(1)
             if STATE == "CASTING" or STATE == "STARTED":
-                cast_hook_to_coords()
+                time.sleep(2.6)
+                pyautogui.mouseUp()
+                x,y = get_new_spot()
+                pyautogui.moveTo(x,y,tween=pyautogui.linear,duration=0.2)
+                time.sleep(0.2)
+                pyautogui.mouseDown()
+                time.sleep(random.uniform(0.2,0.5))
+                pyautogui.mouseUp()
+                log_info(f"Casted towards:{x,y}",logger="Information")
+                time.sleep(2.5)
+                STATE = "CAST"
             elif STATE == "CAST":
                 time.sleep(20)
                 if STATE == "CAST":
                     log_info(f"Seems to be stuck on cast. Recasting",logger="Information")
-                    pyautogui.mouseDown()
+                    STATE = "CASTING"
                     pyautogui.mouseUp()
-                    cast_hook_to_coords()
+                    cast_hook()
         else:
             break
 
 #Uses the color of a area to determine when to hold or let go of a mouse. Is calibrated by modifying boundingbox on line 16 as well as the 80 on like 93          
 def do_minigame():
     global STATE
-    time.sleep(0.5)
     if STATE != "CASTING" and STATE != "STARTED":
         STATE = "SOLVING"
         log_info(f'Attempting Minigame',logger="Information")
@@ -167,6 +161,7 @@ def Grab_Screen(sender,data):
 
 #Detects bobber in tracking zone using openCV
 def Detect_Bobber():
+    start_time = time.time()
     with mss.mss() as sct:
         base = numpy.array(sct.grab(screen_area))
         base = numpy.flip(base[:, :, :3], 2)  # 1
@@ -177,9 +172,13 @@ def Detect_Bobber():
         bobber = cv2.cvtColor(bobber, cv2.COLOR_RGB2BGR)
         result = cv2.matchTemplate(base,bobber,cv2.TM_CCOEFF_NORMED)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-        if max_val > 0.7:
+        if max_val > 0.5:
+            print(f"Bobber Found!. Match certainty:{max_val}")
+            print("%s seconds to calculate" % (time.time() - start_time))
             return ["TRUE",max_loc,base.shape[1]]
         else:
+            print(f"Bobber not found. Match certainty:{max_val}")
+            print("%s seconds to calculate" % (time.time() - start_time))
             return ["FALSE",max_loc,base.shape[1]]
 
 #Starts the bots threads
