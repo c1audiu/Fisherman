@@ -8,7 +8,7 @@ https://discord.gg/J3YhZEUm5E
 
 Fisherman is a free open source fishing bot written in python.
 
-![alt text](https://i.imgur.com/t3dqLeh.png)
+![GUI](https://i.imgur.com/t3dqLeh.png)
 
 **Features:**
 
@@ -20,6 +20,8 @@ Fisherman is a free open source fishing bot written in python.
 6) Works on any screen size
 7) Extremely optimal fish catching
 8) Uses MSS and OpenCV for effiecent object detection
+
+![In use](https://imgur.com/1AsrXKE)
 
 **How To Use:**
 
