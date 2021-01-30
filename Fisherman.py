@@ -220,7 +220,7 @@ def Detect_Bobber():
             print("%s seconds to calculate" % (time.time() - start_time))
             fish_counter_detection_old = fish_counter_detection
             fish_counter_detection = 0
-            time.sleep(2.8)
+            time.sleep(3)
             return ["FALSE",max_loc,base.shape[1]]
 
 #Starts the bots threads
