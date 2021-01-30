@@ -91,7 +91,7 @@ def do_minigame():
         pyautogui.mouseDown()
         pyautogui.mouseUp()
         #Initial scan. Waits for bobber to appear
-        time.sleep(0.05)
+        time.sleep(0.1)
         valid,location,size = Detect_Bobber()
         if valid == "TRUE":
             while 1:
@@ -220,7 +220,7 @@ def Detect_Bobber():
             print("%s seconds to calculate" % (time.time() - start_time))
             fish_counter_detection_old = fish_counter_detection
             fish_counter_detection = 0
-            time.sleep(2.7)
+            time.sleep(2.8)
             return ["FALSE",max_loc,base.shape[1]]
 
 #Starts the bots threads
