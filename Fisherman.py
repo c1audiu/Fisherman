@@ -69,11 +69,9 @@ def cast_hook():
     while 1:
         if stop_button == False:
             if STATE == "CASTING" or STATE == "STARTED":
-                #time.sleep(1.5)
                 pyautogui.mouseUp()
                 x,y = get_new_spot()
                 pyautogui.moveTo(x,y,tween=pyautogui.linear,duration=0.2)
-                #time.sleep(0.1)
                 pyautogui.mouseDown()
                 time.sleep(random.uniform(0.2,0.4))
                 pyautogui.mouseUp()
