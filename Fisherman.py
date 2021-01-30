@@ -69,24 +69,17 @@ def cast_hook():
     while 1:
         if stop_button == False:
             if STATE == "CASTING" or STATE == "STARTED":
-                time.sleep(2.6)
+                #time.sleep(1.5)
                 pyautogui.mouseUp()
                 x,y = get_new_spot()
                 pyautogui.moveTo(x,y,tween=pyautogui.linear,duration=0.2)
-                time.sleep(0.2)
+                #time.sleep(0.1)
                 pyautogui.mouseDown()
-                time.sleep(random.uniform(0.2,0.5))
+                time.sleep(random.uniform(0.2,0.4))
                 pyautogui.mouseUp()
                 log_info(f"Casted towards:{x,y}",logger="Information")
-                time.sleep(2.5)
+                time.sleep(1.2)
                 STATE = "CAST"
-            # elif STATE == "CAST":
-            #     time.sleep(30)
-            #     if STATE == "CAST":
-            #         log_info(f"Seems to be stuck on cast. Recasting",logger="Information")
-            #         STATE = "CASTING"
-            #         pyautogui.mouseUp()
-            #         cast_hook()
         else:
             break
 
@@ -100,7 +93,7 @@ def do_minigame():
         pyautogui.mouseDown()
         pyautogui.mouseUp()
         #Initial scan. Waits for bobber to appear
-        time.sleep(0.15)
+        time.sleep(0.05)
         valid,location,size = Detect_Bobber()
         if valid == "TRUE":
             while 1:
@@ -143,7 +136,7 @@ def flag_executing():
         log_info(f'Using bait...', logger="Information")
         keyboard.press('1')
         keyboard.release('1')
-        time.sleep(2)
+        time.sleep(1)
         bait_flag = 0
 
     if potion_flag == 1:
@@ -168,7 +161,6 @@ def generate_coords(sender,data):
         n = n+1
         temp = []
         log_info(f'[spot:{n}]|Press Spacebar over the spot you want',logger="Information")
-        time.sleep(0.2)
         while True:
             a = win32api.GetKeyState(0x20)
             if a != state_left:
@@ -230,6 +222,7 @@ def Detect_Bobber():
             print("%s seconds to calculate" % (time.time() - start_time))
             fish_counter_detection_old = fish_counter_detection
             fish_counter_detection = 0
+            time.sleep(2.7)
             return ["FALSE",max_loc,base.shape[1]]
 
 #Starts the bots threads
