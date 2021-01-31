@@ -116,8 +116,9 @@ def fish_counting_and_flaging():
     if fish_counter_detection_old > fish_counter_detection:
         fish_counter = fish_counter + 1
         fish_per_minute = (fish_counter * 60) / (stopwatch.duration)
-        log_info(f"FISH COUNTER:{fish_counter}", logger="Information")
-        log_info(f"FISH PER MINUTE:{round(fish_per_minute, 2)}", logger="Information")
+        log_info(f"!STATISTIC!: Fishes Caught:{fish_counter}", logger="Information")
+        log_info(f"!STATISTIC!: Fishes per minute::{round(fish_per_minute, 2)}", logger="Information")
+        log_info(f"!STATISTIC!: Fishbot running for: {int(stopwatch.duration/60)} minutes", logger="Information")
 
         if (fish_counter % 10 == 0) and (fish_counter != 0):
             bait_flag = 1
