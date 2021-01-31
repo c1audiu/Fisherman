@@ -13,5 +13,7 @@ PyRect==0.1.4
 PyScreeze==0.1.26
 PyTweening==1.0.3
 pywin32==300
+stopwatch.py==1.0.1
+pynput==1.7.2
 configparser
 mss
