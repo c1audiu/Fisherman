@@ -2,8 +2,6 @@ import pyautogui,pyaudio,audioop,threading,time,win32api,configparser,mss,mss.to
 from dearpygui.core import *
 from dearpygui.simple import *
 import random
-from stopwatch import Stopwatch
-from pynput.keyboard import Key, Controller
 
 #Loads Settings
 parser = configparser.ConfigParser()
@@ -56,7 +54,6 @@ def check_volume():
                     total=total+reading
                     if total > max_volume and STATE != "SOLVING" and STATE != "DELAY" and STATE != "CASTING":
                         do_minigame()
-                        flag_executing()
         else:
             break
 
@@ -69,34 +66,41 @@ def cast_hook():
     while 1:
         if stop_button == False:
             if STATE == "CASTING" or STATE == "STARTED":
+                time.sleep(2.6)
                 pyautogui.mouseUp()
                 x,y = get_new_spot()
                 pyautogui.moveTo(x,y,tween=pyautogui.linear,duration=0.2)
+                time.sleep(0.2)
                 pyautogui.mouseDown()
-                time.sleep(random.uniform(0.2,0.4))
+                time.sleep(random.uniform(0.2,0.5))
                 pyautogui.mouseUp()
                 log_info(f"Casted towards:{x,y}",logger="Information")
-                time.sleep(1.2)
+                time.sleep(2.5)
                 STATE = "CAST"
+            elif STATE == "CAST":
+                time.sleep(20)
+                if STATE == "CAST":
+                    log_info(f"Seems to be stuck on cast. Recasting",logger="Information")
+                    STATE = "CASTING"
+                    pyautogui.mouseUp()
+                    cast_hook()
         else:
             break
 
 #Uses obj detection with OpenCV to find and track bobbers left / right coords
 def do_minigame():
     global STATE
-
     if STATE != "CASTING" and STATE != "STARTED":
         STATE = "SOLVING"
         log_info(f'Attempting Minigame',logger="Information")
         pyautogui.mouseDown()
         pyautogui.mouseUp()
         #Initial scan. Waits for bobber to appear
-        time.sleep(0.1)
+        time.sleep(0.5)
         valid,location,size = Detect_Bobber()
         if valid == "TRUE":
             while 1:
                 valid,location,size = Detect_Bobber()
-                fish_counting_and_flaging()
                 if valid == "TRUE":
                     if location[0] < size / 2:
                         pyautogui.mouseDown()
@@ -109,42 +113,6 @@ def do_minigame():
                         break
         else:
             STATE = "CASTING"
-
-def fish_counting_and_flaging():
-    global fish_counter, fish_counter_detection_old, fish_counter_detection, stopwatch, bait_flag, potion_round, potion_flag
-
-    if fish_counter_detection_old > fish_counter_detection:
-        fish_counter = fish_counter + 1
-        fish_per_minute = (fish_counter * 60) / (stopwatch.duration)
-        log_info(f"!STATISTIC!: Fishes Caught:{fish_counter}", logger="Information")
-        log_info(f"!STATISTIC!: Fishes per minute::{round(fish_per_minute, 2)}", logger="Information")
-        log_info(f"!STATISTIC!: Fishbot running for: {int(stopwatch.duration/60)} minutes", logger="Information")
-
-        if (fish_counter % 10 == 0) and (fish_counter != 0):
-            bait_flag = 1
-            log_info(f'Bait flag = 1', logger="Information")
-        if (int(stopwatch.duration / 1800)) > potion_round:
-            potion_round = (stopwatch.duration % 1800)
-            potion_flag = 1
-            log_info(f'Potion flag = 1', logger="Information")
-
-def flag_executing():
-    global bait_flag, potion_flag, keyboard
-
-    if bait_flag == 1:
-        log_info(f'Using bait...', logger="Information")
-        keyboard.press('1')
-        keyboard.release('1')
-        time.sleep(1)
-        bait_flag = 0
-
-    if potion_flag == 1:
-        log_info(f'Using potion...', logger="Information")
-        keyboard.press('2')
-        keyboard.release('2')
-        time.sleep(2)
-        potion_flag = 0
-
 
 ##########################################################
 #
@@ -160,13 +128,14 @@ def generate_coords(sender,data):
         n = n+1
         temp = []
         log_info(f'[spot:{n}]|Press Spacebar over the spot you want',logger="Information")
+        time.sleep(1)
         while True:
-            a = win32api.GetKeyState(0x20)
+            a = win32api.GetKeyState(0x20)  
             if a != state_left:
-                state_left = a
+                state_left = a 
                 if a < 0:
                     break
-            time.sleep(0.001)
+            time.sleep(0.001) 
         x,y = pyautogui.position()
         temp.append(x)
         temp.append(y)
@@ -198,7 +167,6 @@ def Grab_Screen(sender,data):
 
 #Detects bobber in tracking zone using openCV
 def Detect_Bobber():
-    global fish_counter_detection, fish_counter_detection_old
     start_time = time.time()
     with mss.mss() as sct:
         base = numpy.array(sct.grab(screen_area))
@@ -210,24 +178,18 @@ def Detect_Bobber():
         bobber = cv2.cvtColor(bobber, cv2.COLOR_RGB2BGR)
         result = cv2.matchTemplate(base,bobber,cv2.TM_CCOEFF_NORMED)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-        if max_val > 0.60:
+        if max_val > 0.5:
             print(f"Bobber Found!. Match certainty:{max_val}")
             print("%s seconds to calculate" % (time.time() - start_time))
-            fish_counter_detection_old = fish_counter_detection
-            fish_counter_detection = 1
             return ["TRUE",max_loc,base.shape[1]]
         else:
             print(f"Bobber not found. Match certainty:{max_val}")
             print("%s seconds to calculate" % (time.time() - start_time))
-            fish_counter_detection_old = fish_counter_detection
-            fish_counter_detection = 0
-            time.sleep(3)
             return ["FALSE",max_loc,base.shape[1]]
 
 #Starts the bots threads
 def start(data,sender):
-    global max_volume,stop_button,STATE,stopwatch
-    stopwatch = Stopwatch()
+    global max_volume,stop_button,STATE
     STATE = "STARTING"
     stop_button = False
     volume_manager = threading.Thread(target = check_volume)
@@ -278,16 +240,6 @@ def save_settings(sender,data):
     p.write(open(f'Settings.ini', 'w'))
     log_info(f'Saved New Settings to settings.ini',logger="Information")
 
-def initialization():
-    global fish_counter, fish_counter_detection, fish_counter_detection_old,keyboard,potion_round,potion_flag,bait_flag
-    keyboard = Controller()
-    fish_counter = 0
-    fish_counter_detection = 0
-    fish_counter_detection_old = 0
-    potion_round = 0
-    potion_flag = 0
-    bait_flag = 0
-
 #Settings for DearPyGui window
 set_main_window_size(700,500)
 set_style_window_menu_button_position(0)
@@ -314,6 +266,5 @@ with window("Fisherman Window",width = 684,height = 460):
     add_logger("Information",log_level=0)
     log_info(f'Loaded Settings. Volume Threshold:{max_volume},Tracking Zone:{screen_area},Debug Mode:{debugmode}',logger="Information")
 
-initialization()
 threading.Thread(target = Setup_title).start()
 start_dearpygui()
