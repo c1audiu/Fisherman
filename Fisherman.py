@@ -7,8 +7,9 @@ import random
 parser = configparser.ConfigParser()
 parser.read('settings.ini')
 debugmode = parser.getboolean('Settings','debug')
-max_volume = parser.get('Settings','Volume_Threshold')
+max_volume = parser.getint('Settings','Volume_Threshold')
 screen_area = parser.get('Settings','tracking_zone')
+detection_threshold = parser.getfloat('Settings','detection_threshold')
 
 screen_area = screen_area.strip('(')
 screen_area = screen_area.strip(')')
@@ -31,6 +32,13 @@ stop_button = False
 #Stuff for mouse events
 state_left = win32api.GetKeyState(0x01)
 state_right = win32api.GetKeyState(0x02)
+
+#fish counters
+fish_count = 0
+
+bait_counter = 0
+
+food_timer = 0
 
 ##########################################################
 #
@@ -89,7 +97,7 @@ def cast_hook():
 
 #Uses obj detection with OpenCV to find and track bobbers left / right coords
 def do_minigame():
-    global STATE
+    global STATE,fish_count,bait_counter
     if STATE != "CASTING" and STATE != "STARTED":
         STATE = "SOLVING"
         log_info(f'Attempting Minigame',logger="Information")
@@ -99,6 +107,8 @@ def do_minigame():
         time.sleep(0.5)
         valid,location,size = Detect_Bobber()
         if valid == "TRUE":
+            fish_count += 1
+            bait_counter += 1
             while 1:
                 valid,location,size = Detect_Bobber()
                 if valid == "TRUE":
@@ -206,6 +216,7 @@ def start(data,sender):
             log_info(f'Hook Manager Started',logger="Information")
             log_info(f'Bot Started',logger="Information")
     STATE = "STARTED"
+    pyautogui.press("1")
 
 #Stops the bot and closes active threads
 def stop(data,sender):
@@ -224,11 +235,21 @@ def save_volume(sender,data):
     max_volume = get_value("Set Volume Threshold")
     log_info(f'Max Volume Updated to :{max_volume}',logger="Information")
 
+#Set detection threshold
+def save_threshold(sender,data):
+    global detection_threshold
+    detection_threshold = get_value("Set Detection Threshold")
+    log_info(f'Detection Threshold Updated to :{detection_threshold}',logger="Information")
+
 #Title Tracking
 def Setup_title():
+    global bait_counter
     while 1:
-        set_main_window_title(f"Fisherman | Albion Online Bot | Status:{STATE} | Current Volume:{max_volume} \ {total} |")
+        set_main_window_title(f"Fisherman | Status:{STATE} | Fish Hits:{fish_count} |Current Volume:{max_volume} \ {total} |")
         time.sleep(0.1)
+        if bait_counter == 10:
+            bait_counter = 0
+            pyautogui.press("1")
 
 #Saves settings to settings.ini
 def save_settings(sender,data):
@@ -237,6 +258,7 @@ def save_settings(sender,data):
     p.read_file(fp)
     p.set('Settings', 'volume_threshold', str(max_volume))
     p.set('Settings','tracking_zone',str(screen_area))
+    p.set('Settings','detection_threshold',str(detection_threshold))
     p.write(open(f'Settings.ini', 'w'))
     log_info(f'Saved New Settings to settings.ini',logger="Information")
 
@@ -252,6 +274,7 @@ with window("Fisherman Window",width = 684,height = 460):
     set_window_pos("Fisherman Window",0,0)
     add_input_int("Amount Of Spots",max_value=10,min_value=0,tip = "Amount of Fishing Spots")
     add_input_int("Set Volume Threshold",max_value=100000,min_value=0,default_value=int(max_volume),callback = save_volume ,tip = "Volume Threshold to trigger catch event")
+    add_input_float("Set Detection Threshold",min_value=0.1,max_value=1.0,default_value=detection_threshold,callback=save_threshold)
     add_spacing(count = 3)
     add_button("Set Fishing Spots",width=130,callback=generate_coords,tip = "Starts function that lets you select fishing spots")
     add_same_line()
